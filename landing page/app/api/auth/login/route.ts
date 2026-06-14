@@ -1,24 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
-import { verifyPassword, setAuthCookie } from '@/lib/auth'
+import { verifyPassword, hashPassword, setAuthCookie } from '@/lib/auth'
 
-const DEMO_EMAIL = process.env.DEMO_EMAIL ?? 'demo@officenator.ai'
+const DEMO_EMAIL    = process.env.DEMO_EMAIL    ?? 'demo@officenator.ai'
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'demo1234'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, demo } = await req.json()
+    const body = await req.json()
+    const { email, password, demo } = body
 
-    const db = await getDb()
+    // ── Connect to DB ─────────────────────────────────────────────────
+    let db
+    try {
+      db = await getDb()
+    } catch (dbErr: any) {
+      console.error('[login] DB connect failed:', dbErr?.message)
+      return NextResponse.json(
+        { error: 'Cannot connect to database. Check MongoDB Atlas — IP whitelist and cluster status.' },
+        { status: 503 }
+      )
+    }
+
     const users = db.collection('users')
 
-    // ── Demo login ────────────────────────────────────────────────────
+    // ── Demo login ─────────────────────────────────────────────────────
     if (demo === true) {
-      // Find or auto-create the demo account
       let demoUser = await users.findOne({ email: DEMO_EMAIL })
 
       if (!demoUser) {
-        const { hashPassword } = await import('@/lib/auth')
         const hashed = await hashPassword(DEMO_PASSWORD)
         const result = await users.insertOne({
           username:    'demo',
@@ -40,7 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, username: 'demo', isDemo: true })
     }
 
-    // ── Normal login ──────────────────────────────────────────────────
+    // ── Normal login ───────────────────────────────────────────────────
     if (!email?.trim() || !password)
       return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 })
 
@@ -59,8 +69,12 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ ok: true, username: user.username })
-  } catch (err) {
-    console.error('[login]', err)
-    return NextResponse.json({ error: 'Server error. Please try again.' }, { status: 500 })
+
+  } catch (err: any) {
+    console.error('[login] Unexpected error:', err?.message, err?.stack)
+    return NextResponse.json(
+      { error: `Server error: ${err?.message ?? 'Unknown error'}` },
+      { status: 500 }
+    )
   }
 }
