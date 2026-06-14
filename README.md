@@ -240,7 +240,8 @@ These require a **physical Windows machine**. The backend cannot be hosted on Ve
 
 | Name | Role | GitHub |
 |---|---|---|
-| Srikanth | Lead Developer | [@srikanth02108](https://github.com/srikanth02108) |
+| Kuldeep Reddy | Lead Developer | [@23wj1a0541](https://github.com/23wj1a0541) |
+| Srikanth | Developer | [@srikanth02108](https://github.com/srikanth02108) |
 
 *Want to contribute? See [CONTRIBUTING.md](CONTRIBUTING.md)*
 
