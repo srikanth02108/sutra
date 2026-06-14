@@ -28,6 +28,7 @@ export function Dashboard() {
   }))
 
   const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" | "info" } | null>(null)
+  const [verify, setVerify] = useState<{ plan: string; steps_count: number } | null>(null)
 
   const showToast = (msg: string, kind: "ok" | "err" | "info" = "info", ms = 3500) => {
     setToast({ msg, kind })
@@ -37,7 +38,10 @@ export function Dashboard() {
   useEffect(() => {
     if (!lastEvent) return
     if (lastEvent.type === "error")            showToast(`⚠ ${lastEvent.message}`, "err", 5000)
-    else if (lastEvent.type === "done")        showToast(`✓ ${lastEvent.plan}`, "ok")
+    else if (lastEvent.type === "verify") {
+      setVerify({ plan: lastEvent.plan, steps_count: lastEvent.steps_count })
+      setTimeout(() => setVerify(null), 6000)
+    }
     else if (lastEvent.type === "confirm_required")
       showToast(`❓ "${lastEvent.plan}" — say Yes or No`, "info", 9000)
     else if (lastEvent.type === "aborted")     showToast(`✕ ${lastEvent.reason}`, "err")
@@ -143,6 +147,46 @@ export function Dashboard() {
         <Undo2 className="h-5 w-5" />
         <span className="hidden text-sm sm:inline">Kill Switch / Undo</span>
       </motion.button>
+
+      {/* Verification popup — shown after successful execution */}
+      <AnimatePresence>
+        {verify && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -16 }}
+            animate={{ opacity: 1, scale: 1,    y: 0   }}
+            exit={{    opacity: 0, scale: 0.95, y: -16 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed left-1/2 top-24 z-50 -translate-x-1/2 w-[min(480px,90vw)]"
+          >
+            <div className="rounded-2xl border border-chart-2/40 bg-[oklch(0.18_0.014_240)] p-5 shadow-2xl"
+              style={{ boxShadow: "0 0 40px -8px oklch(0.72 0.13 165 / 40%)" }}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-chart-2/20 text-chart-2 text-lg">
+                  ✓
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-chart-2 text-sm">Action completed</p>
+                  <p className="mt-1 text-sm text-foreground">{verify.plan}</p>
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                    {verify.steps_count} step{verify.steps_count !== 1 ? "s" : ""} executed · check your Excel sheet
+                  </p>
+                </div>
+                <button
+                  onClick={() => setVerify(null)}
+                  className="shrink-0 text-muted-foreground hover:text-foreground text-lg leading-none"
+                >×</button>
+              </div>
+              {/* Auto-dismiss progress bar */}
+              <motion.div
+                className="mt-3 h-0.5 rounded-full bg-chart-2/40"
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: 6, ease: "linear" }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Toast */}
       <AnimatePresence>

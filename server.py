@@ -296,7 +296,15 @@ def run_listen_cycle():
 
         if success:
             speaker.speak("Done!")
-            emit({"type": "done", "plan": plan_text})
+            # ── Verification popup ──────────────────────────────────────
+            emit({
+                "type": "verify",
+                "plan": plan_text,
+                "action_ids": plan.get("action_ids", []),
+                "steps_count": len(steps),
+                "message": f"✓ Completed: {plan_text}",
+            })
+            # Learn from this interaction
             threading.Thread(
                 target=lambda: memory.save_from_conversation(english_text, plan_text),
                 daemon=True,
@@ -307,7 +315,7 @@ def run_listen_cycle():
                 asyncio.run_coroutine_threadsafe(broadcast_state(), loop)
         else:
             speaker.speak("Some steps failed.")
-            emit({"type": "error", "message": "Some steps failed"})
+            emit({"type": "error", "message": "Some steps failed — check that Excel is open and in focus"})
 
     except Exception as e:
         logger.exception("Pipeline error: %s", e)

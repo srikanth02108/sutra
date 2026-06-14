@@ -1,0 +1,23 @@
+{
+  "memories": [
+    {
+      "fact": "User prefers Times New Roman font",
+      "user_id": "default",
+      "created": "2026-06-14T09:10:47.248515",
+      "source": "command: I should write in English that my favorite sports "
+    },
+    {
+      "fact": "User often mentions font preferences when writing",
+      "user_id": "default",
+      "created": "2026-06-14T09:10:47.248763",
+      "source": "command: I should write in English that my favorite sports "
+    },
+    {
+      "fact": "User prefers font size 24",
+      "user_id": "default",
+      "created": "2026-06-14T09:11:29.247429",
+      "source": "command: Make the font of the selected cell Times New Roman"
+    }
+  ],
+  "updated": "2026-06-14T09:11:29.248500"
+}

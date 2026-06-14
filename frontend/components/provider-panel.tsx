@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Zap, Eye, EyeOff, Check, ChevronDown, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -130,19 +131,26 @@ export function ProviderPanel({
   onSetProvider, onSetKey, onSetCustom,
 }: Props) {
   const [open,        setOpen]        = useState(false)
+  const [mounted,     setMounted]     = useState(false)
   const [customUrl,   setCustomUrl]   = useState("")
   const [customModel, setCustomModel] = useState("")
   const [customKey,   setCustomKey]   = useState("")
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelRef      = useRef<HTMLDivElement>(null)
 
-  // Close when clicking outside
+  // Only allowed to portal once mounted on the client (avoids SSR mismatch)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Close when clicking outside — checks BOTH the trigger and the portaled panel,
+  // since the panel is no longer a DOM child of containerRef once portaled
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      const insideTrigger = containerRef.current?.contains(target)
+      const insidePanel   = panelRef.current?.contains(target)
+      if (!insideTrigger && !insidePanel) setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -180,148 +188,163 @@ export function ProviderPanel({
         <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", open && "rotate-180")} />
       </button>
 
-      {/* ── Dropdown — fixed position to avoid layout shift / overlap ── */}
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Invisible backdrop — catches outside clicks on mobile too */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
-            />
+      {/* ── Dropdown — rendered via portal to <body> ──────────────────
+          This escapes any ancestor with transform/filter/backdrop-filter/
+          opacity<1, which would otherwise force `fixed` to be positioned
+          relative to (and visually composited with) that ancestor —
+          the cause of the "x-ray" / see-through panel. */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {open && (
+            <>
+              {/* Dimming backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px]"
+                onClick={() => setOpen(false)}
+              />
 
-            <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0,  scale: 1    }}
-              exit={{    opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              // fixed position so it never disturbs the page layout
-              className={cn(
-                "fixed z-50 w-[22rem] rounded-2xl p-4 shadow-2xl",
-                // fully opaque background — no bleed-through from content behind
-                "border border-border bg-[oklch(0.18_0.014_240)] backdrop-blur-none",
-                // position below the trigger — top bar is ~65px tall
-                "top-[68px] right-4",
-              )}
-              style={{ maxHeight: "calc(100vh - 88px)", overflowY: "auto", boxShadow: "0 8px 48px -4px rgba(0,0,0,0.8), 0 0 0 1px oklch(0.85 0.05 200 / 15%)" }}
-            >
-              {/* Header row */}
-              <div className="mb-3 flex items-center justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Brain Provider
-                </p>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0,  scale: 1    }}
+                exit={{    opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className={cn(
+                  "fixed z-[101] isolate w-[22rem] rounded-2xl p-4 shadow-2xl",
+                  "border border-border",
+                  // position below the trigger — top bar is ~65px tall
+                  "top-[68px] right-4",
+                )}
+                style={{
+                  maxHeight: "calc(100vh - 88px)",
+                  overflowY: "auto",
+                  backgroundColor: "oklch(0.16 0.014 240)",
+                  boxShadow: "0 8px 48px -4px rgba(0,0,0,0.85), 0 0 0 1px oklch(0.85 0.05 200 / 15%)",
+                }}
+              >
+                {/* Header row */}
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Brain Provider
+                  </p>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
 
-              {/* Provider cards */}
-              <div className="space-y-2">
-                {PROVIDERS.map(p => {
-                  const u = safeUsage[p.id] ?? {
-                    requests: 0, usage_pct: 0, daily_request_limit: 0,
-                    tokens_in: 0, tokens_out: 0,
-                  }
-                  const isActive  = p.id === provider
-                  const hasKey    = safeKeysSet[p.id] ?? false
+                {/* Provider cards */}
+                <div className="space-y-2">
+                  {PROVIDERS.map(p => {
+                    const u = safeUsage[p.id] ?? {
+                      requests: 0, usage_pct: 0, daily_request_limit: 0,
+                      tokens_in: 0, tokens_out: 0,
+                    }
+                    const isActive  = p.id === provider
+                    const hasKey    = safeKeysSet[p.id] ?? false
 
-                  return (
-                    <div
-                      key={p.id}
-                      className={cn(
-                        "rounded-xl border p-3 transition-colors",
-                        isActive
-                          ? "border-primary/40 bg-[oklch(0.22_0.014_240)]"
-                          : "border-border bg-[oklch(0.20_0.014_240)] hover:bg-[oklch(0.22_0.014_240)]",
-                      )}
-                    >
-                      {/* Top row — radio + labels + key button */}
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          onClick={() => onSetProvider(p.id)}
-                          className="flex min-w-0 items-center gap-2"
-                        >
-                          {/* radio dot */}
-                          <span className={cn(
-                            "h-2 w-2 shrink-0 rounded-full border-2 transition-colors",
-                            isActive
-                              ? "border-primary bg-primary"
-                              : "border-muted-foreground bg-transparent",
-                          )} />
-                          <span className={cn("text-sm font-semibold", p.color)}>
-                            {p.label}
-                          </span>
-                          <span className="truncate font-mono text-[9px] text-muted-foreground">
-                            {p.model}
-                          </span>
-                        </button>
-
-                        <KeyInput
-                          label={p.label}
-                          hasKey={hasKey}
-                          onSave={key => onSetKey(p.id, key)}
-                        />
-                      </div>
-
-                      {/* Usage bar — always shown for active, shown for others if key is set */}
-                      {(isActive || hasKey) && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
-                            <span>{u.requests} req today</span>
-                            <span>
-                              {u.usage_pct.toFixed(1)}% · {p.limit}
-                            </span>
-                          </div>
-                          <UsageBar pct={u.usage_pct} />
-                          {(u.tokens_in + u.tokens_out) > 0 && (
-                            <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
-                              {(u.tokens_in + u.tokens_out).toLocaleString()} tokens
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Custom provider fields — only when custom is active */}
-                      {p.id === "custom" && isActive && (
-                        <div className="mt-3 space-y-2 border-t border-border pt-3">
-                          <input
-                            value={customUrl}
-                            onChange={e => setCustomUrl(e.target.value)}
-                            placeholder="Base URL  e.g. http://localhost:11434/v1"
-                            className="w-full rounded-md border border-border bg-[oklch(0.15_0.012_240)] px-2 py-1.5 font-mono text-[10px] text-foreground outline-none placeholder:text-muted-foreground/60"
-                          />
-                          <input
-                            value={customModel}
-                            onChange={e => setCustomModel(e.target.value)}
-                            placeholder="Model name  e.g. llama3.2"
-                            className="w-full rounded-md border border-border bg-[oklch(0.15_0.012_240)] px-2 py-1.5 font-mono text-[10px] text-foreground outline-none placeholder:text-muted-foreground/60"
-                          />
+                    return (
+                      <div
+                        key={p.id}
+                        className={cn(
+                          "rounded-xl border p-3 transition-colors",
+                          isActive
+                            ? "border-primary/40 bg-[oklch(0.22_0.014_240)]"
+                            : "border-border bg-[oklch(0.20_0.014_240)] hover:bg-[oklch(0.22_0.014_240)]",
+                        )}
+                      >
+                        {/* Top row — radio + labels + key button */}
+                        <div className="flex items-center justify-between gap-2">
                           <button
-                            onClick={() => {
-                              if (customUrl && customModel)
-                                onSetCustom(customUrl, customModel, customKey)
-                            }}
-                            className="w-full rounded-md bg-primary/20 py-1.5 font-mono text-[10px] text-primary hover:bg-primary/30"
+                            onClick={() => onSetProvider(p.id)}
+                            className="flex min-w-0 items-center gap-2"
                           >
-                            apply custom provider
+                            {/* radio dot */}
+                            <span className={cn(
+                              "h-2 w-2 shrink-0 rounded-full border-2 transition-colors",
+                              isActive
+                                ? "border-primary bg-primary"
+                                : "border-muted-foreground bg-transparent",
+                            )} />
+                            <span className={cn("text-sm font-semibold", p.color)}>
+                              {p.label}
+                            </span>
+                            <span className="truncate font-mono text-[9px] text-muted-foreground">
+                              {p.model}
+                            </span>
                           </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
 
-              <p className="mt-3 font-mono text-[9px] text-muted-foreground/50">
-                Keys stored in memory only — cleared on server restart.
-              </p>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                          <KeyInput
+                            label={p.label}
+                            hasKey={hasKey}
+                            onSave={key => onSetKey(p.id, key)}
+                          />
+                        </div>
+
+                        {/* Usage bar — always shown for active, shown for others if key is set */}
+                        {(isActive || hasKey) && (
+                          <div className="mt-2">
+                            <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
+                              <span>{u.requests} req today</span>
+                              <span>
+                                {u.usage_pct.toFixed(1)}% · {p.limit}
+                              </span>
+                            </div>
+                            <UsageBar pct={u.usage_pct} />
+                            {(u.tokens_in + u.tokens_out) > 0 && (
+                              <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                                {(u.tokens_in + u.tokens_out).toLocaleString()} tokens
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Custom provider fields — only when custom is active */}
+                        {p.id === "custom" && isActive && (
+                          <div className="mt-3 space-y-2 border-t border-border pt-3">
+                            <input
+                              value={customUrl}
+                              onChange={e => setCustomUrl(e.target.value)}
+                              placeholder="Base URL  e.g. http://localhost:11434/v1"
+                              className="w-full rounded-md border border-border bg-[oklch(0.15_0.012_240)] px-2 py-1.5 font-mono text-[10px] text-foreground outline-none placeholder:text-muted-foreground/60"
+                            />
+                            <input
+                              value={customModel}
+                              onChange={e => setCustomModel(e.target.value)}
+                              placeholder="Model name  e.g. llama3.2"
+                              className="w-full rounded-md border border-border bg-[oklch(0.15_0.012_240)] px-2 py-1.5 font-mono text-[10px] text-foreground outline-none placeholder:text-muted-foreground/60"
+                            />
+                            <button
+                              onClick={() => {
+                                if (customUrl && customModel)
+                                  onSetCustom(customUrl, customModel, customKey)
+                              }}
+                              className="w-full rounded-md bg-primary/20 py-1.5 font-mono text-[10px] text-primary hover:bg-primary/30"
+                            >
+                              apply custom provider
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <p className="mt-3 font-mono text-[9px] text-muted-foreground/50">
+                  Keys stored in memory only — cleared on server restart.
+                </p>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }

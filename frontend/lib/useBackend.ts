@@ -57,6 +57,7 @@ export type BackendEvent =
   | { type: "transcript_partial"; english: string }
   | { type: "confirm_required"; plan: string }
   | { type: "done";             plan: string }
+  | { type: "verify";           plan: string; action_ids: string[]; steps_count: number; message: string }
   | { type: "undo";             message: string }
   | { type: "aborted";          reason: string }
   | { type: "error";            message: string }
