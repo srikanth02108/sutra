@@ -4,6 +4,7 @@ Sutra Global Hotkey Tray App
 ==============================
 Runs silently in the Windows system tray.
 Press Ctrl+Space ANYWHERE (even when Excel is focused) to start/stop listening.
+-> HOTKEY CHANGED TO: Alt+. (Alt + period)
 
 Usage:
     python hotkey_tray.py
@@ -38,7 +39,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("sutra.tray")
 
 API_BASE = "http://localhost:8000"
-HOTKEY   = "ctrl+space"
+HOTKEY   = "alt+."
 
 # ─── State ───────────────────────────────────────────────────────────────────
 _listening  = False
@@ -181,7 +182,7 @@ def _update_tray_icon(state: str):
         return
 
     labels = {
-        "idle":       "Sutra — Idle (Ctrl+Space to speak)",
+        "idle":       "Sutra — Idle (Alt+. to speak)",
         "listening":  "Sutra 🔴 — Listening…",
         "processing": "Sutra ⏳ — Translating…",
         "executing":  "Sutra ⚡ — Executing…",
@@ -234,7 +235,7 @@ def main():
 
     # Build tray menu
     menu = pystray.Menu(
-        pystray.MenuItem("🎤  Start Listening  (Ctrl+Space)", _start_listening, default=True),
+        pystray.MenuItem("🎤  Start Listening  (Alt+.)", _start_listening, default=True),
         pystray.MenuItem("⏹  Stop",                          _stop_listening),
         pystray.MenuItem("↩  Undo last action",              _undo),
         pystray.Menu.SEPARATOR,

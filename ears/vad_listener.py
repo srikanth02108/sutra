@@ -42,7 +42,7 @@ except ImportError:
     CHUNK_SIZE: int = 512
     SILENCE_TIMEOUT: float = 1.5
     VAD_THRESHOLD: float = 0.5
-    HOTKEY: str = "ctrl+space"
+    HOTKEY: str = "alt+."
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class VoiceListener:
     # ------------------------------------------------------------------
 
     def wait_for_hotkey(self) -> None:
-        """Block until the push-to-talk hotkey (Ctrl+Space) is pressed."""
+        """Block until the push-to-talk hotkey (Alt+.) is pressed."""
         keyboard.wait(HOTKEY)
 
     def record_until_silence(self) -> bytes:
@@ -190,7 +190,7 @@ class VoiceListener:
         Returns:
             WAV audio bytes of the captured utterance.
         """
-        print("\n🎤 Press Ctrl+Space to speak...")
+        print("\n🎤 Press Alt+. to speak...")
         self.wait_for_hotkey()
         print("🔴 Recording... (speak now, will stop after 1.5s silence)")
         audio: bytes = self.record_until_silence()

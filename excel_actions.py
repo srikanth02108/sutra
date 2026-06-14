@@ -435,7 +435,7 @@ def select_row(**kw) -> list:
     return [_hotkey("shift", "space")]
 
 def select_column(**kw) -> list:
-    """Select entire column (uses Ctrl+Space — conflicts with Sutra hotkey in some setups)."""
+    """Select entire column (uses Ctrl+Space for Excel select — no conflict with Alt+. hotkey)."""
     return [*_home_tab(), _ribbon("s", "s", "c")]  # Home → Format → Select column
 
 def type_in_cell(text: str = "", **kw) -> list:

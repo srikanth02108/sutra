@@ -69,7 +69,7 @@ MIN_SPEECH_DURATION: float = 0.5  # Minimum speech duration in seconds
 # ---------------------------------------------------------------------------
 # Push-to-Talk
 # ---------------------------------------------------------------------------
-HOTKEY: str = "ctrl+space"  # Activation hotkey
+HOTKEY: str = "alt+."  # Activation hotkey
 
 # ---------------------------------------------------------------------------
 # TTS (Text-to-Speech) Configuration

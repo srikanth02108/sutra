@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export type AgentState = "idle" | "listening" | "processing" | "executing"
 
 const STATUS_COPY: Record<AgentState, string> = {
-  idle: "Tap to speak",
+  idle: "Press Alt+. to speak",
   listening: "Listening...",
   processing: "Translating via Sarvam AI...",
   executing: "Executing UI actions...",
@@ -154,8 +154,7 @@ export function VoiceInterface({
       )}
 
       <p className="mt-4 max-w-xs text-balance text-center text-xs text-muted-foreground">
-        Project Sutra autonomously controls your desktop through natural voice
-        commands in Hindi or Marathi.
+        Press <span className="font-mono text-primary">Alt+.</span> anywhere — even when Excel is focused — to speak a command.
       </p>
     </section>
   )

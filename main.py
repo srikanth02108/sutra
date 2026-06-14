@@ -6,7 +6,7 @@ Main orchestration loop that ties all components together.
 Usage:
     python main.py
 
-Press Ctrl+Space to speak a command in Hindi/Marathi.
+Press Alt+. (Alt + period) to speak a command in Hindi/Marathi.
 The agent translates, plans, and executes desktop actions automatically.
 Press Ctrl+C to exit.
 """
